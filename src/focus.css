@@ -257,10 +257,13 @@
 .fv2-mission-row.dimmed {
   background: rgba(0, 0, 0, 0.15);
   border-color: rgba(255, 255, 255, 0.03);
+}
+.fv2-mission-row.dimmed > *:not(.fv2-actions-dropdown-container) {
   opacity: 0.55;
   filter: grayscale(35%);
+  transition: opacity 0.2s ease, filter 0.2s ease;
 }
-.fv2-mission-row.dimmed:hover {
+.fv2-mission-row.dimmed:hover > *:not(.fv2-actions-dropdown-container) {
   opacity: 0.85;
   filter: grayscale(0%);
 }
