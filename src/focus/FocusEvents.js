@@ -146,7 +146,7 @@ class FocusEvents {
   _bindDailyList() {
     document.addEventListener('click', (e) => {
       const btn = e.target.closest('.fv2-check-btn');
-      if (btn) {
+      if (btn && !btn.classList.contains('disabled')) {
         const id = btn.getAttribute('data-id');
         if (id) this.engine.toggleCheck(id);
       }

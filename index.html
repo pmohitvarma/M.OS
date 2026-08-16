@@ -637,7 +637,7 @@
       </section>
 
       <!-- 4. FOCUS SECTION (v2 — Clean Rebuild) -->
-      <section id="section-focus" class="dashboard-section focus-section-layout">
+      <section id="section-focus" class="dashboard-section focus-section-layout" data-tilt-container>
 
         <!-- Section Header -->
         <div class="section-header">
@@ -688,7 +688,7 @@
         <!-- Animated Content Area (transitions applied here) -->
         <div id="fv2-content-area" class="fv2-content-area">
 
-          <!-- Today's Missions -->
+          <!-- Single Missions Panel -->
           <div class="fv2-daily-card glass-card">
             <div class="card-glow-overlay"></div>
             <div class="card-content">
@@ -698,31 +698,93 @@
                   <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="card-title-icon"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
                   Missions
                 </h2>
-                <p class="card-subtitle">Missions scheduled for this date</p>
+                <p class="card-subtitle">All active, scheduled, completed, and paused missions</p>
               </div>
               <div id="fv2-daily-list" class="fv2-daily-list"></div>
             </div>
           </div>
 
-          <!-- Progress Card -->
-          <div class="fv2-progress-card glass-card">
-            <div class="card-glow-overlay"></div>
-            <div class="card-content">
-              <div class="fv2-progress-header">
-                <span class="fv2-progress-title">Progress</span>
-                <span class="fv2-progress-count" id="fv2-progress-count">0 of 0 completed</span>
+          <!-- Progress Section (1 card or 2 cards side-by-side) -->
+          <div id="fv2-progress-section" class="fv2-progress-section">
+            <div class="fv2-progress-card glass-card" id="fv2-progress-card-left">
+              <div class="card-glow-overlay"></div>
+              <div class="card-content">
+                <div class="fv2-progress-header">
+                  <span class="fv2-progress-title" id="fv2-progress-title-left">Today's Progress</span>
+                  <span class="fv2-progress-count" id="fv2-progress-count-left">0 of 0 completed</span>
+                </div>
+                <div class="fv2-progress-track">
+                  <div class="fv2-progress-fill" id="fv2-progress-fill-left" style="width: 0%;"></div>
+                </div>
+                <div class="fv2-progress-bottom">
+                  <span class="fv2-progress-percent" id="fv2-progress-percent-left">0%</span>
+                </div>
               </div>
-              <div class="fv2-progress-track">
-                <div class="fv2-progress-fill" id="fv2-progress-fill" style="width: 0%;"></div>
-              </div>
-              <div class="fv2-progress-bottom">
-                <span class="fv2-progress-percent" id="fv2-progress-percent">0%</span>
+            </div>
+
+            <div class="fv2-progress-card glass-card fv2-progress-card-right" id="fv2-progress-card-right">
+              <div class="card-glow-overlay"></div>
+              <div class="card-content">
+                <div class="fv2-progress-header">
+                  <span class="fv2-progress-title" id="fv2-progress-title-right">Today's Progress</span>
+                  <span class="fv2-progress-count" id="fv2-progress-count-right">0 of 0 completed</span>
+                </div>
+                <div class="fv2-progress-track">
+                  <div class="fv2-progress-fill" id="fv2-progress-fill-right" style="width: 0%;"></div>
+                </div>
+                <div class="fv2-progress-bottom">
+                  <span class="fv2-progress-percent" id="fv2-progress-percent-right">0%</span>
+                </div>
               </div>
             </div>
           </div>
 
-        </div>
+          <!-- This Week Graph Panel -->
+          <div class="fv2-graph-card glass-card" data-tilt-element>
+            <div class="card-glow-overlay"></div>
+            <div class="card-content">
+              <div class="card-header-area">
+                <h2 class="card-title">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="card-title-icon"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
+                  This Week
+                </h2>
+                <p class="card-subtitle">Daily completion percentage across the current week</p>
+              </div>
+              <div id="fv2-this-week-graph" class="fv2-graph-container"></div>
+            </div>
+          </div>
 
+          <!-- Last 4 Weeks Graph Panel -->
+          <div class="fv2-graph-card glass-card" data-tilt-element>
+            <div class="card-glow-overlay"></div>
+            <div class="card-content">
+              <div class="card-header-area">
+                <h2 class="card-title">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="card-title-icon"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
+                  Last 4 Weeks
+                </h2>
+                <p class="card-subtitle">Weekly completion percentage averages over the last 4 weeks</p>
+              </div>
+              <div id="fv2-last-4-weeks-graph" class="fv2-graph-container"></div>
+            </div>
+          </div>
+
+          <!-- Monthly Graph Panel -->
+          <div class="fv2-graph-card glass-card" data-tilt-element>
+            <div class="card-glow-overlay"></div>
+            <div class="card-content">
+              <div class="card-header-area">
+                <h2 class="card-title">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="card-title-icon"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path></svg>
+                  Monthly
+                </h2>
+                <p class="card-subtitle">Average completion percentage: Previous Month vs Present Month</p>
+              </div>
+              <div id="fv2-monthly-graph" class="fv2-graph-container"></div>
+            </div>
+          </div>
+
+        </div>
 
       </section>
 

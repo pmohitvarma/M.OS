@@ -4384,8 +4384,8 @@ body.white-theme .scribx-action-btn.delete-btn:hover {
   gap: 22px;
 }
 .focus-section-layout.active {
-  display: flex;
-  animation: fadeInSection 0.4s ease forwards;
+  display: flex !important;
+  animation: sectionReveal 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 

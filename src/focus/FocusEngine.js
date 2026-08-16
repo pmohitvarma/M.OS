@@ -66,7 +66,29 @@ class FocusEngine {
   // SCHEDULING LOGIC
   // ══════════════════════════════════════════
 
+  _getMissionCreatedDate(mission) {
+    if (!mission || !mission.createdAt) return '';
+    try {
+      const d = new Date(mission.createdAt);
+      if (isNaN(d.getTime())) return mission.createdAt.slice(0, 10);
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    } catch {
+      return mission.createdAt.slice(0, 10);
+    }
+  }
+
   _isMissionScheduledFor(mission, dateStr) {
+    // Creation date check: Missions only apply from the date they were created
+    const createdDate = this._getMissionCreatedDate(mission);
+    if (createdDate && dateStr < createdDate) {
+      // Allow range duration missions if explicit startDate is set earlier
+      if (mission.duration === 'range' && mission.startDate && dateStr >= mission.startDate) {
+        // explicit range start date allowed
+      } else {
+        return false;
+      }
+    }
+
     // Date range check
     if (mission.duration === 'range') {
       if (mission.startDate && dateStr < mission.startDate) return false;
@@ -149,14 +171,14 @@ class FocusEngine {
   }
 
   // ══════════════════════════════════════════
-  // RENDERING
+  // RENDERING & CALCULATIONS
   // ══════════════════════════════════════════
 
   renderAll() {
     this._renderDateNav();
     this._renderDaily();
     this._renderProgress();
-    this._renderLibrary();
+    this._renderGraphs();
   }
 
   _renderDateNav() {
@@ -168,33 +190,197 @@ class FocusEngine {
       this.missions,
       this.completions,
       this.selectedDate,
-      (m, dateStr) => this._isMissionActiveFor(m, dateStr)
+      (m, dateStr) => this._isMissionScheduledFor(m, dateStr)
     );
   }
 
   _renderProgress() {
-    const activeMissions = this.missions.filter(m => this._isMissionActiveFor(m, this.selectedDate));
-    const completedIds = Array.isArray(this.completions[this.selectedDate])
-      ? this.completions[this.selectedDate]
-      : [];
-    const completed = activeMissions.filter(m => completedIds.includes(m.id)).length;
-    this.renderer.renderProgress(completed, activeMissions.length);
+    const todayStr = this._today();
+    const isToday = this._isToday(this.selectedDate);
+
+    // Today's Progress Stats
+    const todayActive = this.missions.filter(m => this._isMissionActiveFor(m, todayStr));
+    const todayCompletedIds = Array.isArray(this.completions[todayStr]) ? this.completions[todayStr] : [];
+    const todayCompleted = todayActive.filter(m => todayCompletedIds.map(String).includes(String(m.id))).length;
+    const todayPct = todayActive.length > 0 ? Math.round((todayCompleted / todayActive.length) * 100) : 0;
+    const todayStats = { completed: todayCompleted, total: todayActive.length, pct: todayPct };
+
+    // Selected Date Stats
+    const selActive = this.missions.filter(m => this._isMissionActiveFor(m, this.selectedDate));
+    const selCompletedIds = Array.isArray(this.completions[this.selectedDate]) ? this.completions[this.selectedDate] : [];
+    const selCompleted = selActive.filter(m => selCompletedIds.map(String).includes(String(m.id))).length;
+    const selPct = selActive.length > 0 ? Math.round((selCompleted / selActive.length) * 100) : 0;
+
+    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const dateObj = this._parseDate(this.selectedDate);
+    const dateFormatted = `${dateObj.getDate()} ${monthNames[dateObj.getMonth()]}`;
+
+    const selectedStats = { completed: selCompleted, total: selActive.length, pct: selPct, dateFormatted };
+
+    this.renderer.renderProgress(todayStats, selectedStats, isToday);
   }
 
   _renderLibrary() {
-    this.renderer.renderLibrary(this.missions, this.manageMode);
+    // Deprecated
   }
 
   toggleManageMode() {
-    this.manageMode = !this.manageMode;
-    const btn = document.getElementById('fv2-manage-btn');
-    if (btn) {
-      const btnText = btn.querySelector('.btn-text');
-      if (btnText) {
-        btnText.textContent = this.manageMode ? '✔️ Done Managing' : '⚙️ Manage Missions';
+    // Deprecated
+  }
+
+  // ── Graph Calculations ──
+
+  _renderGraphs() {
+    this._renderThisWeekGraph();
+    this._renderLast4WeeksGraph();
+    this._renderMonthlyGraph();
+  }
+
+  _getDailyPct(dateStr) {
+    const scheduled = this.missions.filter(m => this._isMissionScheduledFor(m, dateStr) && m.status !== 'paused');
+    if (scheduled.length === 0) return null;
+    const completedIds = Array.isArray(this.completions[dateStr]) ? this.completions[dateStr].map(String) : [];
+    const completedCount = scheduled.filter(m => completedIds.includes(String(m.id))).length;
+    return (completedCount / scheduled.length) * 100;
+  }
+
+  _getAverageForDateRange(startDateStr, endDateStr) {
+    const pcts = [];
+    const cur = this._parseDate(startDateStr);
+    const end = this._parseDate(endDateStr);
+
+    while (cur <= end) {
+      const dStr = this._formatDate(cur);
+      const pct = this._getDailyPct(dStr);
+      if (pct !== null) {
+        pcts.push(pct);
       }
+      cur.setDate(cur.getDate() + 1);
     }
-    this._renderLibrary();
+
+    if (pcts.length === 0) return 0;
+    const avg = pcts.reduce((sum, v) => sum + v, 0) / pcts.length;
+    return Math.round(avg);
+  }
+
+  _renderThisWeekGraph() {
+    const dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    const todayObj = this._parseDate(this._today());
+
+    // Monday of current week
+    const dayOfWeek = todayObj.getDay(); // 0=Sun, 1=Mon...
+    const diffToMon = (dayOfWeek + 6) % 7;
+    const monday = new Date(todayObj);
+    monday.setDate(monday.getDate() - diffToMon);
+
+    const points = [];
+    const weekDates = [];
+
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(monday);
+      d.setDate(monday.getDate() + i);
+      const dStr = this._formatDate(d);
+      weekDates.push(dStr);
+
+      const dailyPct = this._getDailyPct(dStr);
+      points.push({
+        label: dayNames[i],
+        pct: dailyPct !== null ? Math.round(dailyPct) : 0,
+        isAverage: false
+      });
+    }
+
+    // 8th point: This Week Average
+    const monStr = weekDates[0];
+    const sunStr = weekDates[6];
+    const weekAvg = this._getAverageForDateRange(monStr, sunStr);
+
+    points.push({
+      label: 'Average',
+      pct: weekAvg,
+      isAverage: true
+    });
+
+    this.renderer.renderThisWeekGraph(points);
+  }
+
+  _renderLast4WeeksGraph() {
+    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const todayObj = this._parseDate(this._today());
+
+    // Monday of current week
+    const dayOfWeek = todayObj.getDay();
+    const diffToMon = (dayOfWeek + 6) % 7;
+    const currentMon = new Date(todayObj);
+    currentMon.setDate(currentMon.getDate() - diffToMon);
+
+    const points = [];
+
+    // 4 weeks: Week -3, Week -2, Week -1, Current Week
+    for (let w = 3; w >= 0; w--) {
+      const wMon = new Date(currentMon);
+      wMon.setDate(currentMon.getDate() - (w * 7));
+
+      const wSun = new Date(wMon);
+      wSun.setDate(wMon.getDate() + 6);
+
+      const monStr = this._formatDate(wMon);
+      const sunStr = this._formatDate(wSun);
+
+      const avgPct = this._getAverageForDateRange(monStr, sunStr);
+
+      const label = w === 0 ? 'This Week' : `Week -${w}`;
+      const sublabel = `${wMon.getDate()} ${monthNames[wMon.getMonth()]} - ${wSun.getDate()} ${monthNames[wSun.getMonth()]}`;
+
+      points.push({
+        label,
+        sublabel,
+        pct: avgPct,
+        isAverage: w === 0
+      });
+    }
+
+    this.renderer.renderLast4WeeksGraph(points);
+  }
+
+  _renderMonthlyGraph() {
+    const monthFullNames = ['January', 'February', 'March', 'April', 'May', 'June',
+      'July', 'August', 'September', 'October', 'November', 'December'];
+    const todayObj = this._parseDate(this._today());
+
+    // Present Month
+    const presentYear = todayObj.getFullYear();
+    const presentMonth = todayObj.getMonth();
+    const startPresent = `${presentYear}-${String(presentMonth + 1).padStart(2, '0')}-01`;
+    const lastDayPresent = new Date(presentYear, presentMonth + 1, 0).getDate();
+    const endPresent = `${presentYear}-${String(presentMonth + 1).padStart(2, '0')}-${String(lastDayPresent).padStart(2, '0')}`;
+    const presentAvg = this._getAverageForDateRange(startPresent, endPresent);
+
+    // Previous Month
+    const prevDate = new Date(presentYear, presentMonth - 1, 1);
+    const prevYear = prevDate.getFullYear();
+    const prevMonth = prevDate.getMonth();
+    const startPrev = `${prevYear}-${String(prevMonth + 1).padStart(2, '0')}-01`;
+    const lastDayPrev = new Date(prevYear, prevMonth + 1, 0).getDate();
+    const endPrev = `${prevYear}-${String(prevMonth + 1).padStart(2, '0')}-${String(lastDayPrev).padStart(2, '0')}`;
+    const prevAvg = this._getAverageForDateRange(startPrev, endPrev);
+
+    const points = [
+      {
+        label: 'Previous Month',
+        sublabel: `${monthFullNames[prevMonth]} ${prevYear}`,
+        pct: prevAvg,
+        isAverage: false
+      },
+      {
+        label: 'Present Month',
+        sublabel: `${monthFullNames[presentMonth]} ${presentYear}`,
+        pct: presentAvg,
+        isAverage: true
+      }
+    ];
+
+    this.renderer.renderMonthlyGraph(points);
   }
 
   // ══════════════════════════════════════════
